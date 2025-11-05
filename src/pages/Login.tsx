@@ -1,41 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { AlertCircle, CheckCircle } from "lucide-react";
-
-interface LoginPageProps {
-	onLogin: (userData: unknown) => void;
-}
 
 interface FormErrors {
 	email?: string;
 	password?: string;
 	confirmPassword?: string;
+	username?: string;
+	general?: string;
 }
 
-export default function Login({ onLogin }: LoginPageProps) {
+export default function Login() {
+	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
+	const [username, setUsername] = useState("");
+	const [name, setName] = useState("");
 	const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [isLoading, setIsLoading] = useState(false);
 	const [successMessage, setSuccessMessage] = useState("");
 
-	const mockUsers = [
-		{
-			id: "1",
-			email: "user@example.com",
-			password: "password123",
-			role: "user" as const,
-			name: "Regular User",
-		},
-		{
-			id: "2",
-			email: "admin@example.com",
-			password: "admin123",
-			role: "admin" as const,
-			name: "Administrator",
-		},
-	];
+	const API_BASE_URL = "http://localhost:8000/api";
+
+	useEffect(() => {
+		const currentUser = localStorage.getItem("currentUser");
+		const accessToken = localStorage.getItem("access_token");
+
+		if (currentUser && accessToken) {
+			navigate("/admin/dashboard", { replace: true });
+		}
+	}, [navigate]);
 
 	const validateEmail = (email: string): boolean => {
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -57,8 +53,6 @@ export default function Login({ onLogin }: LoginPageProps) {
 
 		if (!password) {
 			newErrors.password = "Password is required";
-		} else if (!validatePassword(password)) {
-			newErrors.password = "Password must be at least 8 characters";
 		}
 
 		setErrors(newErrors);
@@ -68,10 +62,18 @@ export default function Login({ onLogin }: LoginPageProps) {
 	const validateSignUp = (): boolean => {
 		const newErrors: FormErrors = {};
 
+		if (!name) {
+			newErrors.general = "Name is required";
+		}
+
 		if (!email) {
 			newErrors.email = "Email is required";
 		} else if (!validateEmail(email)) {
 			newErrors.email = "Please enter a valid email";
+		}
+
+		if (!username) {
+			newErrors.username = "Username is required";
 		}
 
 		if (!password) {
@@ -93,44 +95,57 @@ export default function Login({ onLogin }: LoginPageProps) {
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setSuccessMessage("");
+		setErrors({});
 
 		if (!validateLogin()) {
 			return;
 		}
 
 		setIsLoading(true);
-		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		const user = mockUsers.find(
-			(u) => u.email === email && u.password === password
-		);
-
-		if (user) {
-			const userData = {
-				id: user.id,
-				email: user.email,
-				role: user.role,
-				name: user.name,
-				isLoggedIn: true,
-			};
-
-			localStorage.setItem("currentUser", JSON.stringify(userData));
-
-			setSuccessMessage("Login successful!");
-			setTimeout(() => onLogin(userData), 500);
-		} else {
-			setErrors({
-				email: "Invalid email or password",
-				password: "Invalid email or password",
+		try {
+			const response = await fetch(`${API_BASE_URL}/login`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify({
+					email,
+					password,
+				}),
 			});
-		}
 
-		setIsLoading(false);
+			const data = await response.json();
+
+			if (response.ok) {
+				localStorage.setItem("access_token", data.access_token);
+				localStorage.setItem("currentUser", JSON.stringify(data.user));
+
+				setSuccessMessage("Login successful!");
+
+				setTimeout(() => {
+					navigate("/admin/dashboard", { replace: true });
+				}, 500);
+			} else {
+				setErrors({
+					general: data.message || "Invalid email or password",
+				});
+			}
+		} catch (error) {
+			console.error("Login error:", error);
+			setErrors({
+				general: "Network error. Please try again.",
+			});
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const handleSignUp = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setSuccessMessage("");
+		setErrors({});
 
 		if (!validateSignUp()) {
 			return;
@@ -138,36 +153,56 @@ export default function Login({ onLogin }: LoginPageProps) {
 
 		setIsLoading(true);
 
-		const existingUser = mockUsers.find((u) => u.email === email);
-		if (existingUser) {
-			setErrors({ email: "User with this email already exists" });
+		try {
+			const response = await fetch(`${API_BASE_URL}/register`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify({
+					name: name,
+					email,
+					username,
+					password,
+					password_confirmation: confirmPassword,
+				}),
+			});
+
+			const data = await response.json();
+
+			if (response.ok) {
+				localStorage.setItem("access_token", data.access_token);
+				localStorage.setItem("currentUser", JSON.stringify(data.user));
+
+				setSuccessMessage("Account created successfully!");
+
+				setTimeout(() => {
+					navigate("/admin/dashboard", { replace: true });
+				}, 500);
+			} else {
+				if (data.errors) {
+					const apiErrors: FormErrors = {};
+					Object.keys(data.errors).forEach((key) => {
+						if (key === "email") apiErrors.email = data.errors[key][0];
+						if (key === "username") apiErrors.username = data.errors[key][0];
+						if (key === "password") apiErrors.password = data.errors[key][0];
+					});
+					setErrors(apiErrors);
+				} else {
+					setErrors({
+						general: data.message || "Registration failed",
+					});
+				}
+			}
+		} catch (error) {
+			console.error("Registration error:", error);
+			setErrors({
+				general: "Network error. Please try again.",
+			});
+		} finally {
 			setIsLoading(false);
-			return;
 		}
-
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-
-		const newUser = {
-			id: Date.now().toString(),
-			email,
-			password,
-			role: "user" as const,
-			name: email.split("@")[0],
-		};
-
-		const userData = {
-			id: newUser.id,
-			email: newUser.email,
-			role: newUser.role,
-			name: newUser.name,
-			isLoggedIn: true,
-		};
-
-		localStorage.setItem("currentUser", JSON.stringify(userData));
-
-		setIsLoading(false);
-		setSuccessMessage("Account created successfully!");
-		setTimeout(() => onLogin(userData), 500);
 	};
 
 	const ErrorMessage = ({ message }: { message?: string }) => {
@@ -196,13 +231,6 @@ export default function Login({ onLogin }: LoginPageProps) {
 						Symbiosis Dashboard
 					</h1>
 					<p className="text-gray-600 mb-4">Manage your documents and analytics</p>
-
-					{/* Demo credentials info */}
-					<div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-4">
-						<p className="font-semibold">Demo Credentials:</p>
-						<p>User: user@example.com / password123</p>
-						<p>Admin: admin@example.com / admin123</p>
-					</div>
 				</div>
 
 				<div className="bg-white rounded-lg shadow-xl p-6">
@@ -213,11 +241,21 @@ export default function Login({ onLogin }: LoginPageProps) {
 						</div>
 					)}
 
+					{errors.general && (
+						<div className="flex items-center gap-2 bg-red-50 text-red-700 p-3 rounded-lg mb-4">
+							<AlertCircle className="w-4 h-4" />
+							<span className="text-sm">{errors.general}</span>
+						</div>
+					)}
+
 					<div className="w-full">
 						<div className="grid grid-cols-2 gap-2 bg-gray-100 rounded-lg p-1 mb-6">
 							<button
 								type="button"
-								onClick={() => setActiveTab("login")}
+								onClick={() => {
+									setActiveTab("login");
+									setErrors({});
+								}}
 								className={`py-2 px-4 rounded-md text-sm font-medium transition-colors ${
 									activeTab === "login"
 										? "bg-white text-gray-900 shadow"
@@ -227,7 +265,10 @@ export default function Login({ onLogin }: LoginPageProps) {
 							</button>
 							<button
 								type="button"
-								onClick={() => setActiveTab("signup")}
+								onClick={() => {
+									setActiveTab("signup");
+									setErrors({});
+								}}
 								className={`py-2 px-4 rounded-md text-sm font-medium transition-colors ${
 									activeTab === "signup"
 										? "bg-white text-gray-900 shadow"
@@ -286,6 +327,39 @@ export default function Login({ onLogin }: LoginPageProps) {
 
 						{activeTab === "signup" && (
 							<form onSubmit={handleSignUp} className="space-y-4">
+								<div>
+									<label className="text-sm font-medium text-gray-900 mb-2 block">
+										Full Name
+									</label>
+									<input
+										type="text"
+										placeholder="John Doe"
+										value={name}
+										onChange={(e) => {
+											setName(e.target.value);
+											if (errors.general) setErrors({ ...errors, general: undefined });
+										}}
+										className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									/>
+								</div>
+								<div>
+									<label className="text-sm font-medium text-gray-900 mb-2 block">
+										Username
+									</label>
+									<input
+										type="text"
+										placeholder="Choose a username"
+										value={username}
+										onChange={(e) => {
+											setUsername(e.target.value);
+											if (errors.username) setErrors({ ...errors, username: undefined });
+										}}
+										className={`w-full px-3 py-2 bg-white border ${
+											errors.username ? "border-red-500" : "border-gray-300"
+										} rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+									/>
+									<ErrorMessage message={errors.username} />
+								</div>
 								<div>
 									<label className="text-sm font-medium text-gray-900 mb-2 block">
 										Email

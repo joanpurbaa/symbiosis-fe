@@ -22,6 +22,11 @@ interface User {
 	role: "user" | "admin";
 	name: string;
 	isLoggedIn: boolean;
+	username?: string;
+	position?: string;
+	company_address?: string;
+	work_field?: string;
+	access_token?: string;
 }
 
 export default function Admin() {
@@ -37,8 +42,8 @@ export default function Admin() {
 		name: "English",
 	});
 	const [currentUser, setCurrentUser] = useState<User | null>(null);
+	const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-	// Check user authentication on component mount
 	useEffect(() => {
 		const userData = localStorage.getItem("currentUser");
 		if (userData) {
@@ -69,15 +74,44 @@ export default function Admin() {
 		return () => clearTimeout(delay);
 	}, [responsiveSidebar]);
 
-	const handleLogout = () => {
-		localStorage.removeItem("currentUser");
-		navigate("/masuk");
+	const handleLogout = async () => {
+		setIsLoggingOut(true);
+
+		try {
+			const token = localStorage.getItem("access_token");
+
+			if (token) {
+				const response = await fetch("http://localhost:8000/api/logout", {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+						Accept: "application/json",
+					},
+				});
+
+				if (response.ok) {
+					console.log("Logout successful from server");
+				} else {
+					console.warn(
+						"Logout API call failed, but continuing with client-side logout"
+					);
+				}
+			}
+		} catch (error) {
+			console.error("Logout API error:", error);
+		} finally {
+			localStorage.removeItem("access_token");
+			localStorage.removeItem("currentUser");
+			setCurrentUser(null);
+			setIsLoggingOut(false);
+			navigate("/masuk");
+		}
 	};
 
 	const renderMainContent = () => {
 		const currentSection = pathSegments[1];
 
-		// Content yang sama untuk kedua role
 		switch (currentSection) {
 			case "dashboard":
 				return <Dashboard language={currentLanguage} />;
@@ -90,7 +124,6 @@ export default function Admin() {
 			case "profile":
 				return <Profile language={currentLanguage} />;
 			case "user-management":
-				// Hanya admin yang bisa akses user management
 				if (currentUser?.role !== "admin") {
 					navigate("/dashboard");
 					return null;
@@ -110,7 +143,14 @@ export default function Admin() {
 	};
 
 	if (!currentUser) {
-		return <div>Loading...</div>;
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-gray-100">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+					<p className="mt-4 text-gray-600">Loading...</p>
+				</div>
+			</div>
+		);
 	}
 
 	return (
@@ -122,7 +162,6 @@ export default function Admin() {
 					</a>
 				</section>
 				<section className="flex justify-end items-center gap-[15px] md:gap-[30px]">
-					{/* Language Selector */}
 					<select
 						value={currentLanguage.code}
 						onChange={(e) =>
@@ -138,7 +177,11 @@ export default function Admin() {
 
 					<div className="flex items-center gap-3">
 						<h3 className="text-zinc-800 text-base lg:text-xl font-medium">
-							{currentUser.name} ({currentUser.role})
+							{currentUser.name}
+							{currentUser.username && ` (@${currentUser.username})`}
+							<span className="ml-2 text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+								{currentUser.role}
+							</span>
 						</h3>
 						<UserIcon className="w-7 h-7 text-zinc-800" />
 					</div>
@@ -170,10 +213,11 @@ export default function Admin() {
 					<div className="flex justify-center">
 						<button
 							onClick={handleLogout}
+							disabled={isLoggingOut}
 							className={`flex items-center text-base lg:text-xl text-white font-normal ${
 								!responsiveSidebar ? "bg-green-800" : "bg-transparent"
-							} rounded-full px-[30px] lg:px-[60px] py-[8px] lg:py-[12px] gap-[10px]`}>
-							{showLogoutText && "Logout"}
+							} rounded-full px-[30px] lg:px-[60px] py-[8px] lg:py-[12px] gap-[10px] disabled:opacity-50 disabled:cursor-not-allowed transition-opacity`}>
+							{showLogoutText && (isLoggingOut ? "Logging out..." : "Logout")}
 							<div
 								className={`flex justify-center items-center border ${
 									!responsiveSidebar ? "border-white" : "border-green-800"

@@ -1,39 +1,87 @@
-import { createBrowserRouter, RouterProvider } from "react-router";
-import { lazy } from "react";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router";
+import { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const Login = lazy(() => import("./pages/Login"));
 const Admin = lazy(() => import("./pages/Admin"));
 
+const LoadingSpinner = () => (
+	<div className="min-h-screen flex items-center justify-center bg-gray-100">
+		<div className="text-center">
+			<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+			<p className="mt-4 text-gray-600">Loading...</p>
+		</div>
+	</div>
+);
+
 const router = createBrowserRouter([
 	{
 		path: "/masuk",
-		element: <Login onLogin={() => {}} />,
+		element: (
+			<Suspense fallback={<LoadingSpinner />}>
+				<Login />
+			</Suspense>
+		),
 	},
 	{
 		path: "/admin/dashboard",
-		element: <Admin />,
+		element: (
+			<Suspense fallback={<LoadingSpinner />}>
+				<ProtectedRoute>
+					<Admin />
+				</ProtectedRoute>
+			</Suspense>
+		),
 	},
 	{
 		path: "/admin/documents",
-		element: <Admin />,
+		element: (
+			<Suspense fallback={<LoadingSpinner />}>
+				<ProtectedRoute>
+					<Admin />
+				</ProtectedRoute>
+			</Suspense>
+		),
 	},
 	{
 		path: "/admin/sroi-calculator",
-		element: <Admin />,
+		element: (
+			<Suspense fallback={<LoadingSpinner />}>
+				<ProtectedRoute>
+					<Admin />
+				</ProtectedRoute>
+			</Suspense>
+		),
 	},
 	{
 		path: "/admin/user-management",
-		element: <Admin />,
+		element: (
+			<Suspense fallback={<LoadingSpinner />}>
+				<ProtectedRoute allowedRoles={["admin"]}>
+					<Admin />
+				</ProtectedRoute>
+			</Suspense>
+		),
 	},
 	{
 		path: "/admin/profile",
-		element: <Admin />,
+		element: (
+			<Suspense fallback={<LoadingSpinner />}>
+				<ProtectedRoute allowedRoles={["user"]}>
+					<Admin />
+				</ProtectedRoute>
+			</Suspense>
+		),
+	},
+	{
+		path: "/",
+		element: <Navigate to="/admin/dashboard" replace />,
 	},
 	{
 		path: "*",
-		element: <Login onLogin={() => {}} />,
+		element: <Navigate to="/masuk" replace />,
 	},
 ]);
 
