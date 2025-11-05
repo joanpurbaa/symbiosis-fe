@@ -9,7 +9,6 @@ import {
 	Edit,
 	Download,
 } from "lucide-react";
-import { DocumentList } from "../../DocumentList";
 
 interface Language {
 	code: string;
@@ -25,6 +24,13 @@ interface Document {
 	status: "completed" | "processing";
 	uploadedBy?: string;
 	documentType?: string;
+	uploaderName?: string;
+	uploaderUsername?: string;
+}
+
+interface DocumentsProps {
+	language: Language;
+	userRole?: "user" | "admin";
 }
 
 const mockAllDocuments = [
@@ -35,7 +41,9 @@ const mockAllDocuments = [
 		size: "2.4 MB",
 		uploadDate: "2024-01-15",
 		status: "completed" as const,
-		uploadedBy: "user@example.com",
+		uploadedBy: "john.doe@company.com",
+		uploaderName: "John Doe",
+		uploaderUsername: "johndoe",
 		documentType: "Laporan Ringkasan",
 	},
 	{
@@ -45,7 +53,9 @@ const mockAllDocuments = [
 		size: "1.2 MB",
 		uploadDate: "2024-01-14",
 		status: "completed" as const,
-		uploadedBy: "admin@example.com",
+		uploadedBy: "admin@company.com",
+		uploaderName: "Admin User",
+		uploaderUsername: "admin",
 		documentType: "Laporan Keuangan",
 	},
 	{
@@ -55,7 +65,9 @@ const mockAllDocuments = [
 		size: "800 KB",
 		uploadDate: "2024-01-13",
 		status: "processing" as const,
-		uploadedBy: "user@example.com",
+		uploadedBy: "jane.smith@company.com",
+		uploaderName: "Jane Smith",
+		uploaderUsername: "janesmith",
 		documentType: "Proposal",
 	},
 	{
@@ -65,42 +77,12 @@ const mockAllDocuments = [
 		size: "3.1 MB",
 		uploadDate: "2024-01-12",
 		status: "completed" as const,
-		uploadedBy: "user2@example.com",
+		uploadedBy: "budi.santoso@company.com",
+		uploaderName: "Budi Santoso",
+		uploaderUsername: "budisantoso",
 		documentType: "Life Cycle Assessment",
 	},
 ];
-
-const mockUserDocuments = [
-	{
-		id: "1",
-		name: "Annual Report 2024",
-		type: "PDF",
-		size: "2.4 MB",
-		uploadDate: "2024-01-15",
-		status: "completed" as const,
-	},
-	{
-		id: "2",
-		name: "Financial Summary",
-		type: "Excel",
-		size: "1.2 MB",
-		uploadDate: "2024-01-14",
-		status: "completed" as const,
-	},
-	{
-		id: "3",
-		name: "Project Proposal",
-		type: "Word",
-		size: "800 KB",
-		uploadDate: "2024-01-13",
-		status: "processing" as const,
-	},
-];
-
-interface DocumentsProps {
-	language: Language;
-	userRole?: "user" | "admin";
-}
 
 const documentTypes = [
 	{
@@ -127,9 +109,7 @@ const documentTypes = [
 ];
 
 export function Documents({ language, userRole = "user" }: DocumentsProps) {
-	const [documents, setDocuments] = useState<Document[]>(
-		userRole === "admin" ? mockAllDocuments : mockUserDocuments
-	);
+	const [documents, setDocuments] = useState<Document[]>(mockAllDocuments);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [entriesPerPage, setEntriesPerPage] = useState<number>(10);
 	const [selectedFiles, setSelectedFiles] = useState<
@@ -162,7 +142,10 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 
 	const handleEdit = (doc: Document) => {
 		setEditingDoc(doc.id);
-		setEditForm({ name: doc.name, type: doc.documentType || doc.type });
+		setEditForm({
+			name: doc.name,
+			type: doc.documentType || doc.type,
+		});
 	};
 
 	const handleSaveEdit = () => {
@@ -311,10 +294,10 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 				size: formatFileSize(file.size),
 				uploadDate: new Date().toISOString().split("T")[0],
 				status: "completed" as const,
-				...(userRole === "admin" && {
-					uploadedBy: "current-user@example.com",
-					documentType: docLabel,
-				}),
+				uploadedBy: "current-user@example.com",
+				uploaderName: "Current User",
+				uploaderUsername: "currentuser",
+				documentType: docLabel,
 			};
 
 			setDocuments((prev) => [newDocument, ...prev]);
@@ -350,8 +333,10 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 				doc.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				(doc.documentType &&
 					doc.documentType.toLowerCase().includes(searchTerm.toLowerCase())) ||
-				(doc.uploadedBy &&
-					doc.uploadedBy.toLowerCase().includes(searchTerm.toLowerCase()))
+				(doc.uploaderName &&
+					doc.uploaderName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+				(doc.uploaderUsername &&
+					doc.uploaderUsername.toLowerCase().includes(searchTerm.toLowerCase()))
 		);
 	}, [documents, searchTerm]);
 
@@ -374,11 +359,44 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 				</p>
 			</header>
 
-			{userRole === "admin" ? (
+			{userRole === "admin" && (
 				<section className="bg-background border border-border rounded-lg p-6">
-					<h2 className="text-xl font-semibold mb-4">
+					<h2 className="text-xl font-semibold mb-6">
 						{language.code === "en" ? "All Documents" : "Semua Dokumen"}
 					</h2>
+
+					<div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between mb-6">
+						<div className="flex-1 w-full">
+							<div className="relative">
+								<Search
+									className="absolute left-3 top-2 text-muted-foreground"
+									size={20}
+								/>
+								<input
+									placeholder={
+										language.code === "en" ? "Search documents..." : "Cari dokumen..."
+									}
+									value={searchTerm}
+									onChange={(e) => setSearchTerm(e.target.value)}
+									className="pl-10 w-full px-3 py-2 border border-border rounded-lg bg-background"
+								/>
+							</div>
+						</div>
+
+						<div className="flex items-center gap-3">
+							<select
+								value={entriesPerPage}
+								onChange={(e) => setEntriesPerPage(Number(e.target.value))}
+								className="px-3 py-2 border border-border rounded-lg bg-background text-sm">
+								{[5, 10, 20, 50].map((num) => (
+									<option key={num} value={num}>
+										{language.code === "en" ? `Show ${num}` : `Tampilkan ${num}`}
+									</option>
+								))}
+							</select>
+						</div>
+					</div>
+
 					<div className="overflow-x-auto">
 						<table className="w-full border-collapse border border-border">
 							<thead>
@@ -391,9 +409,6 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 									</th>
 									<th className="border border-border p-3 text-left">
 										{language.code === "en" ? "Uploaded By" : "Diunggah Oleh"}
-									</th>
-									<th className="border border-border p-3 text-left">
-										{language.code === "en" ? "Upload Date" : "Tanggal Unggah"}
 									</th>
 									<th className="border border-border p-3 text-left">
 										{language.code === "en" ? "Actions" : "Aksi"}
@@ -414,7 +429,10 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 													className="w-full px-2 py-1 border border-gray-300 rounded"
 												/>
 											) : (
-												doc.name
+												<div className="flex items-center gap-2">
+													<FileText size={16} className="text-blue-600" />
+													<span className="font-medium">{doc.name}</span>
+												</div>
 											)}
 										</td>
 										<td className="border border-border p-3">
@@ -428,45 +446,59 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 													className="w-full px-2 py-1 border border-gray-300 rounded"
 												/>
 											) : (
-												doc.documentType || doc.type
+												<span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+													{doc.documentType || doc.type}
+												</span>
 											)}
 										</td>
-										<td className="border border-border p-3">{doc.uploadedBy}</td>
-										<td className="border border-border p-3">{doc.uploadDate}</td>
+										<td className="border border-border p-3">
+											<div className="flex flex-col">
+												<span className="font-medium text-sm">{doc.uploaderName}</span>
+												<span className="text-xs text-gray-500">
+													@{doc.uploaderUsername}
+												</span>
+												<span className="text-xs text-gray-400">{doc.uploadedBy}</span>
+											</div>
+										</td>
 										<td className="border border-border p-3">
 											<div className="flex gap-2">
 												{editingDoc === doc.id ? (
 													<>
 														<button
 															onClick={handleSaveEdit}
-															className="px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700">
-															✓
+															className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
+															<Check size={14} />
+															{language.code === "en" ? "Save" : "Simpan"}
 														</button>
 														<button
 															onClick={() => setEditingDoc(null)}
-															className="px-2 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600">
-															✗
+															className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 flex items-center gap-1">
+															<X size={14} />
+															{language.code === "en" ? "Cancel" : "Batal"}
 														</button>
 													</>
 												) : (
 													<>
 														<button
 															onClick={() => handleEdit(doc)}
-															className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+															className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center gap-1"
 															title={language.code === "en" ? "Edit" : "Edit"}>
-															<Edit size={16} />
+															<Edit size={14} />
+															{language.code === "en" ? "Edit" : "Edit"}
 														</button>
 														<button
 															onClick={() => handleDownload(doc)}
-															className="p-1 text-green-600 hover:bg-green-50 rounded"
+															className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1"
 															title={language.code === "en" ? "Download" : "Unduh"}>
-															<Download size={16} />
+															<Download size={14} />
+															{language.code === "en" ? "Download" : "Unduh"}
 														</button>
 														<button
 															onClick={() => handleDelete(doc.id)}
-															className="p-1 text-red-600 hover:bg-red-50 rounded"
+															className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center gap-1"
 															title={language.code === "en" ? "Delete" : "Hapus"}>
-															<Trash2 size={16} />
+															<Trash2 size={14} />
+															{language.code === "en" ? "Delete" : "Hapus"}
 														</button>
 													</>
 												)}
@@ -478,142 +510,183 @@ export function Documents({ language, userRole = "user" }: DocumentsProps) {
 						</table>
 					</div>
 				</section>
-			) : (
-				<section className="bg-background border border-border rounded-lg p-6">
-					<h2 className="text-xl font-semibold mb-4">
-						{language.code === "en" ? "Upload Documents" : "Unggah Dokumen"}
-					</h2>
-					<p className="text-sm text-muted-foreground mb-6">
-						{language.code === "en"
-							? "Please select and upload each document individually. Maximum file size: 5 MB"
-							: "Silakan pilih dan unggah setiap dokumen satu per satu. Ukuran file maksimal: 5 MB"}
-					</p>
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-6 items-start content-start">
-						{documentTypes.map((docType) => (
-							<div key={docType.id} className="flex flex-col min-h-0">
-								<label
-									htmlFor={docType.id}
-									className="block text-sm font-medium text-foreground mb-2 flex-shrink-0">
-									{docType.label}
-								</label>
-
-								<div className="flex-1 min-h-0">
-									{!selectedFiles[docType.id] && !uploadedFiles[docType.id] && (
-										<input
-											id={docType.id}
-											type="file"
-											onChange={(e) => handleFileSelect(e, docType.id)}
-											accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-											className="w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer border border-border rounded-lg cursor-pointer bg-background"
-										/>
-									)}
-
-									{selectedFiles[docType.id] && (
-										<div className="flex items-start gap-3 p-3 bg-background border-2 border-green-500 rounded-lg">
-											<div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mt-0.5">
-												<FileText className="w-5 h-5 text-blue-600" />
-											</div>
-											<div className="flex-1 min-w-0">
-												<p className="text-sm font-medium text-foreground truncate">
-													{selectedFiles[docType.id]?.name}
-												</p>
-												<p className="text-xs text-muted-foreground">
-													{selectedFiles[docType.id] &&
-														formatFileSize(selectedFiles[docType.id]!.size)}
-												</p>
-											</div>
-											<div className="flex items-center gap-2 flex-shrink-0">
-												<button
-													onClick={() => handleUpload(docType.id, docType.label)}
-													className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-1.5">
-													<Upload size={14} />
-													{language.code === "en" ? "Upload" : "Unggah"}
-												</button>
-												<button
-													onClick={() => handleRemoveFile(docType.id)}
-													className="p-1.5 hover:bg-red-100 rounded-lg transition-colors">
-													<X size={18} className="text-red-600" />
-												</button>
-											</div>
-										</div>
-									)}
-
-									{uploadedFiles[docType.id] && !selectedFiles[docType.id] && (
-										<div className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-											<div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mt-0.5">
-												<Check className="w-5 h-5 text-green-600" />
-											</div>
-											<div className="flex-1 min-w-0">
-												<p className="text-sm font-medium text-green-700 truncate">
-													{uploadedFiles[docType.id].name}
-												</p>
-												<p className="text-xs text-green-600">
-													{uploadedFiles[docType.id].size}
-												</p>
-											</div>
-											<button
-												onClick={() => showDeleteWarning(docType.id, docType.label)}
-												className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-1.5 flex-shrink-0">
-												<Trash2 size={14} />
-												{language.code === "en" ? "Delete" : "Hapus"}
-											</button>
-										</div>
-									)}
-
-									{errors[docType.id] && (
-										<p className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-200 mt-2">
-											{errors[docType.id]}
-										</p>
-									)}
-								</div>
-							</div>
-						))}
-					</div>
-				</section>
-			)}
-
-			{(userRole === "user" || paginatedDocuments.length > 0) && (
-				<section className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
-					<div className="flex-1 w-full">
-						<div className="relative">
-							<Search
-								className="absolute left-3 top-2 text-muted-foreground"
-								size={20}
-							/>
-							<input
-								placeholder={
-									language.code === "en" ? "Search documents..." : "Cari dokumen..."
-								}
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="pl-10 w-full px-3 py-2 border border-border rounded-lg bg-background"
-							/>
-						</div>
-					</div>
-
-					<div className="flex items-center gap-3">
-						<select
-							value={entriesPerPage}
-							onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-							className="px-3 py-2 border border-border rounded-lg bg-background text-sm">
-							{[5, 10, 20, 50].map((num) => (
-								<option key={num} value={num}>
-									{language.code === "en" ? `Show ${num}` : `Tampilkan ${num}`}
-								</option>
-							))}
-						</select>
-					</div>
-				</section>
 			)}
 
 			{userRole === "user" && (
-				<section>
-					<DocumentList
-						documents={paginatedDocuments}
-						onDelete={handleDelete}
-						searchTerm={searchTerm}
-					/>
-				</section>
+				<>
+					<section className="bg-background border border-border rounded-lg p-6">
+						<h2 className="text-xl font-semibold mb-4">
+							{language.code === "en" ? "Upload Documents" : "Unggah Dokumen"}
+						</h2>
+						<p className="text-sm text-muted-foreground mb-6">
+							{language.code === "en"
+								? "Please select and upload each document individually. Maximum file size: 5 MB"
+								: "Silakan pilih dan unggah setiap dokumen satu per satu. Ukuran file maksimal: 5 MB"}
+						</p>
+						<div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-6 items-start content-start">
+							{documentTypes.map((docType) => (
+								<div key={docType.id} className="flex flex-col min-h-0">
+									<label
+										htmlFor={docType.id}
+										className="block text-sm font-medium text-foreground mb-2 flex-shrink-0">
+										{docType.label}
+									</label>
+
+									<div className="flex-1 min-h-0">
+										{!selectedFiles[docType.id] && !uploadedFiles[docType.id] && (
+											<input
+												id={docType.id}
+												type="file"
+												onChange={(e) => handleFileSelect(e, docType.id)}
+												accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+												className="w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer border border-border rounded-lg cursor-pointer bg-background"
+											/>
+										)}
+
+										{selectedFiles[docType.id] && (
+											<div className="flex items-start gap-3 p-3 bg-background border-2 border-green-500 rounded-lg">
+												<div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mt-0.5">
+													<FileText className="w-5 h-5 text-blue-600" />
+												</div>
+												<div className="flex-1 min-w-0">
+													<p className="text-sm font-medium text-foreground truncate">
+														{selectedFiles[docType.id]?.name}
+													</p>
+													<p className="text-xs text-muted-foreground">
+														{selectedFiles[docType.id] &&
+															formatFileSize(selectedFiles[docType.id]!.size)}
+													</p>
+												</div>
+												<div className="flex items-center gap-2 flex-shrink-0">
+													<button
+														onClick={() => handleUpload(docType.id, docType.label)}
+														className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-1.5">
+														<Upload size={14} />
+														{language.code === "en" ? "Upload" : "Unggah"}
+													</button>
+													<button
+														onClick={() => handleRemoveFile(docType.id)}
+														className="p-1.5 hover:bg-red-100 rounded-lg transition-colors">
+														<X size={18} className="text-red-600" />
+													</button>
+												</div>
+											</div>
+										)}
+
+										{uploadedFiles[docType.id] && !selectedFiles[docType.id] && (
+											<div className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+												<div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mt-0.5">
+													<Check className="w-5 h-5 text-green-600" />
+												</div>
+												<div className="flex-1 min-w-0">
+													<p className="text-sm font-medium text-green-700 truncate">
+														{uploadedFiles[docType.id].name}
+													</p>
+													<p className="text-xs text-green-600">
+														{uploadedFiles[docType.id].size}
+													</p>
+												</div>
+												<button
+													onClick={() => showDeleteWarning(docType.id, docType.label)}
+													className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-1.5 flex-shrink-0">
+													<Trash2 size={14} />
+													{language.code === "en" ? "Delete" : "Hapus"}
+												</button>
+											</div>
+										)}
+
+										{errors[docType.id] && (
+											<p className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-200 mt-2">
+												{errors[docType.id]}
+											</p>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					</section>
+
+					{paginatedDocuments.length > 0 && (
+						<section className="bg-background border border-border rounded-lg p-6">
+							<h2 className="text-xl font-semibold mb-4">
+								{language.code === "en" ? "My Documents" : "Dokumen Saya"}
+							</h2>
+							<div className="overflow-x-auto">
+								<table className="w-full border-collapse border border-border">
+									<thead>
+										<tr className="bg-gray-50">
+											<th className="border border-border p-3 text-left">
+												{language.code === "en" ? "File Name" : "Nama Berkas"}
+											</th>
+											<th className="border border-border p-3 text-left">
+												{language.code === "en" ? "File Type" : "Jenis Berkas"}
+											</th>
+											<th className="border border-border p-3 text-left">
+												{language.code === "en" ? "Upload Date" : "Tanggal Unggah"}
+											</th>
+											<th className="border border-border p-3 text-left">
+												{language.code === "en" ? "Uploaded By" : "Diunggah Oleh"}
+											</th>
+											<th className="border border-border p-3 text-left">
+												{language.code === "en" ? "Actions" : "Aksi"}
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										{paginatedDocuments.map((doc) => (
+											<tr key={doc.id} className="hover:bg-gray-50">
+												<td className="border border-border p-3">
+													<div className="flex items-center gap-2">
+														<FileText size={16} className="text-blue-600" />
+														<span className="font-medium">{doc.name}</span>
+													</div>
+												</td>
+												<td className="border border-border p-3">
+													<span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+														{doc.documentType || doc.type}
+													</span>
+												</td>
+												<td className="border border-border p-3">{doc.uploadDate}</td>
+												<td className="border border-border p-3">
+													{doc.uploaderName && doc.uploaderUsername ? (
+														<div className="flex flex-col">
+															<span className="font-medium text-sm">{doc.uploaderName}</span>
+															<span className="text-xs text-gray-500">
+																@{doc.uploaderUsername}
+															</span>
+														</div>
+													) : doc.uploadedBy ? (
+														<span className="text-sm text-muted-foreground">
+															{doc.uploadedBy}
+														</span>
+													) : (
+														<span className="text-sm text-muted-foreground">-</span>
+													)}
+												</td>
+												<td className="border border-border p-3">
+													<div className="flex gap-2">
+														<button
+															onClick={() => handleDownload(doc)}
+															className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
+															<Download size={14} />
+															{language.code === "en" ? "Download" : "Unduh"}
+														</button>
+														<button
+															onClick={() => handleDelete(doc.id)}
+															className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center gap-1">
+															<Trash2 size={14} />
+															{language.code === "en" ? "Delete" : "Hapus"}
+														</button>
+													</div>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						</section>
+					)}
+				</>
 			)}
 
 			<style>{`

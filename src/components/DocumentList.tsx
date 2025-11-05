@@ -8,6 +8,9 @@ interface Document {
 	size: string;
 	uploadDate: string;
 	status: "completed" | "processing";
+	uploadedBy?: string;
+	uploaderName?: string;
+	uploaderUsername?: string;
 }
 
 interface DocumentListProps {
@@ -146,6 +149,9 @@ export function DocumentList({
 										Upload Date
 									</th>
 									<th className="text-left py-3 px-4 font-semibold text-foreground">
+										Uploaded By
+									</th>
+									<th className="text-left py-3 px-4 font-semibold text-foreground">
 										Status
 									</th>
 									<th className="text-left py-3 px-4 font-semibold text-foreground">
@@ -170,6 +176,24 @@ export function DocumentList({
 										<td className="py-3 px-4 text-muted-foreground">{doc.type}</td>
 										<td className="py-3 px-4 text-muted-foreground">{doc.size}</td>
 										<td className="py-3 px-4 text-muted-foreground">{doc.uploadDate}</td>
+										<td className="py-3 px-4">
+											{doc.uploaderName && doc.uploaderUsername ? (
+												<div className="flex flex-col">
+													<span className="text-sm font-medium text-foreground">
+														{doc.uploaderName}
+													</span>
+													<span className="text-xs text-muted-foreground">
+														@{doc.uploaderUsername}
+													</span>
+												</div>
+											) : doc.uploadedBy ? (
+												<span className="text-sm text-muted-foreground">
+													{doc.uploadedBy}
+												</span>
+											) : (
+												<span className="text-sm text-muted-foreground">-</span>
+											)}
+										</td>
 										<td className="py-3 px-4">
 											<span
 												className={`px-3 py-1 rounded-full text-xs font-medium ${

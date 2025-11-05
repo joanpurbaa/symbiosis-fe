@@ -219,7 +219,7 @@ export function SROICalculator({ language }: SROICalculatorProps) {
 
 						<button
 							onClick={calculateSROI}
-							className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-2 rounded-lg">
+							className="w-full bg-green-800 hover:bg-green-900 text-primary-foreground font-semibold py-2 rounded-lg">
 							{language.code === "en" ? "Calculate SROI" : "Hitung SROI"}
 						</button>
 					</div>
